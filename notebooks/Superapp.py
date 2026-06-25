@@ -9,7 +9,7 @@ warnings.filterwarnings("ignore")
 # Page Configuration
 # ──────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="FraudLens",
+    page_title="Fraud Detection Supermodel",
     page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded",
@@ -62,36 +62,33 @@ html, body, [class*="css"] {{
 }}
 
 /* ── Sidebar nav buttons ── */
-[data-testid="stSidebar"] .nav-btn button {{
+[data-testid="stSidebar"] .nav-item-selected {{
+    width: 100%;
+    padding: 0.7rem 1.25rem;
+    margin-bottom: 0.35rem;
+    background: {T['nav_hover']};
+    color: {T['nav_active']};
+    font-weight: 600;
+    border-left: 4px solid {T['accent']};
+    border-radius: 0 8px 8px 0;
+    text-align: left;
+}}
+[data-testid="stSidebar"] .nav-item-button button {{
     width: 100%;
     background: transparent;
     border: none;
     border-radius: 0;
     text-align: left;
-    padding: 0.55rem 1.25rem;
-    font-size: 0.875rem;
-    font-weight: 400;
+    padding: 0.7rem 1.25rem;
+    font-size: 0.95rem;
+    font-weight: 500;
     color: {T['muted']};
     cursor: pointer;
     transition: background 0.12s ease, color 0.12s ease;
-    box-shadow: none;
 }}
-[data-testid="stSidebar"] .nav-btn button:hover {{
+[data-testid="stSidebar"] .nav-item-button button:hover {{
     background: {T['nav_hover']};
     color: {T['text']};
-    border: none;
-    box-shadow: none;
-}}
-[data-testid="stSidebar"] .nav-btn-active button {{
-    color: {T['nav_active']} !important;
-    font-weight: 600 !important;
-    border-left: 2px solid {T['accent']} !important;
-    padding-left: calc(1.25rem - 2px) !important;
-    background: transparent !important;
-    box-shadow: none !important;
-}}
-[data-testid="stSidebar"] .nav-btn-active button:hover {{
-    background: transparent !important;
 }}
 
 /* ── Sidebar toggle ── */
@@ -117,15 +114,19 @@ html, body, [class*="css"] {{
     font-weight: 600;
 }}
 [data-testid="metric-container"] [data-testid="stMetricValue"],
+[data-testid="metric-container"] [data-testid="stMetricValue"] *,
 [data-testid="metric-container"] [data-testid="stMetricValue"] > div,
-[data-testid="metric-container"] [data-testid="stMetricValue"] p {{
+[data-testid="metric-container"] [data-testid="stMetricValue"] p,
+[data-testid="metric-container"] [data-testid="stMetricValue"] span {{
     color: #1E2822 !important;
     font-size: 1.75rem !important;
     font-weight: 700 !important;
     font-family: 'Roboto Mono', monospace !important;
 }}
 [data-testid="metric-container"] [data-testid="stMetricDelta"],
-[data-testid="metric-container"] [data-testid="stMetricDelta"] p {{
+[data-testid="metric-container"] [data-testid="stMetricDelta"] *,
+[data-testid="metric-container"] [data-testid="stMetricDelta"] p,
+[data-testid="metric-container"] [data-testid="stMetricDelta"] span {{
     color: {T['muted']} !important;
     font-size: 0.8rem !important;
 }}
@@ -375,6 +376,17 @@ def render_model_best_card(label: str, value: str):
 """, unsafe_allow_html=True)
 
 
+def render_kpi_card(label: str, value: str, delta: str = None):
+    delta_html = f"<div class='kpi-delta'>{delta}</div>" if delta else ""
+    st.markdown(f"""
+<div class="model-best-card" style="padding:1rem 1.25rem;">
+    <div class="model-best-label">{label}</div>
+    <div class="model-best-value">{value}</div>
+    {delta_html}
+</div>
+""", unsafe_allow_html=True)
+
+
 def render_info_card(title: str, items: list):
     bullets = "".join(
         f"<li style='margin-bottom:0.35rem;color:{T['text_secondary']};font-size:0.84rem;'>{item}</li>"
@@ -397,40 +409,37 @@ def chart_caption(text: str):
 # ──────────────────────────────────────────────────────────────────────────────
 def render_sidebar() -> tuple:
     with st.sidebar:
-        # Title
-        st.markdown("""
+        st.markdown(
+            """
 <div class="sidebar-logo">
-    <div class="sidebar-logo-title">FraudLens</div>
+    <p class="sidebar-logo-title">Fraud Detection Supermodel</p>
 </div>
-<hr class="sidebar-divider">
-""", unsafe_allow_html=True)
+""",
+            unsafe_allow_html=True,
+        )
 
-        # Navigation — plain buttons, no radio chrome
         st.markdown('<div class="sidebar-section">Navigation</div>', unsafe_allow_html=True)
         pages = ["Dashboard", "Data Analysis", "Model Performance"]
-        if "current_page" not in st.session_state:
-            st.session_state.current_page = "Dashboard"
+        for page_name in pages:
+            if st.session_state.current_page == page_name:
+                st.markdown(
+                    f'<div class="nav-item-selected">{page_name}</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                with st.container():
+                    if st.button(page_name, key=f"nav_{page_name}", use_container_width=True):
+                        st.session_state.current_page = page_name
 
-        for p in pages:
-            is_active = st.session_state.current_page == p
-            css_class = "nav-btn nav-btn-active" if is_active else "nav-btn"
-            st.markdown(f'<div class="{css_class}">', unsafe_allow_html=True)
-            if st.button(p, key=f"nav_{p}", use_container_width=True):
-                st.session_state.current_page = p
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        page = st.session_state.current_page
-
-        # Data Source
-        st.markdown('<hr class="sidebar-divider"><div class="sidebar-section">Data Source</div>', unsafe_allow_html=True)
-        use_demo = st.toggle("Use Demonstration Data", value=True, key="demo_toggle")
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-section">Data Source</div>', unsafe_allow_html=True)
+        use_demo = st.checkbox("Use demonstration data", value=True, key="demo_toggle")
         t_file = i_file = None
         if not use_demo:
             t_file = st.file_uploader("Transaction CSV", type="csv", key="trans")
             i_file = st.file_uploader("Identity CSV", type="csv", key="iden")
 
-    return page, use_demo, t_file, i_file
+    return use_demo, t_file, i_file
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -480,7 +489,7 @@ if "current_page" not in st.session_state:
     st.session_state.current_page = "Dashboard"
 
 inject_custom_css()
-page, use_demo, t_file, i_file = render_sidebar()
+use_demo, t_file, i_file = render_sidebar()
 page = st.session_state.current_page
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -510,13 +519,13 @@ if page == "Dashboard":
     # KPI cards
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.metric("Total Transactions", "590,540")
+        render_kpi_card("Total Transactions", "590,540")
     with c2:
-        st.metric("Fraud Cases", "20,663", delta="-5.2% vs prev period", delta_color="normal")
+        render_kpi_card("Fraud Cases", "20,663", delta="-5.2% vs prev period")
     with c3:
-        st.metric("Non-Fraud Cases", "569,877", delta="+2.1%", delta_color="normal")
+        render_kpi_card("Non-Fraud Cases", "569,877", delta="+2.1%")
     with c4:
-        st.metric("Fraud Rate", "3.50%")
+        render_kpi_card("Fraud Rate", "3.50%")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -608,10 +617,14 @@ elif page == "Data Analysis":
 
     fraud_count = int(df["isFraud"].sum())
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Dataset Rows",  f"{df.shape[0]:,}")
-    c2.metric("Features",      f"{df.shape[1]:,}")
-    c3.metric("Fraud Cases",   f"{fraud_count:,}")
-    c4.metric("Fraud Rate",    f"{fraud_count/len(df)*100:.2f}%")
+    with c1:
+        render_kpi_card("Dataset Rows",  f"{df.shape[0]:,}")
+    with c2:
+        render_kpi_card("Features",      f"{df.shape[1]:,}")
+    with c3:
+        render_kpi_card("Fraud Cases",   f"{fraud_count:,}")
+    with c4:
+        render_kpi_card("Fraud Rate",    f"{fraud_count/len(df)*100:.2f}%")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
