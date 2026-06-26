@@ -430,6 +430,7 @@ def render_sidebar() -> tuple:
                 with st.container():
                     if st.button(page_name, key=f"nav_{page_name}", use_container_width=True):
                         st.session_state.current_page = page_name
+                        st.rerun()
 
         st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown('<div class="sidebar-section">Data Source</div>', unsafe_allow_html=True)
