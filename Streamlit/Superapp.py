@@ -19,20 +19,20 @@ st.set_page_config(
 # Fixed Theme — muted warm neutrals
 # ──────────────────────────────────────────────────────────────────────────────
 T = {
-    "bg":             "#F5F3EF",   # warm off-white page
-    "sidebar_bg":     "#EDEAE3",   # slightly darker warm grey sidebar
-    "card_bg":        "#FAFAF8",   # near-white cards
-    "border":         "#D8D3C8",   # warm light border
-    "accent":         "#3D6B5E",   # muted forest teal
-    "text":           "#1E2822",   # near-black for body text
-    "text_secondary": "#4A5568",   # medium grey for secondary text
-    "muted":          "#6E7A74",   # subdued label colour
-    "fraud":          "#A83232",   # deep muted red
-    "safe":           "#3A7048",   # deep muted green
-    "warning":        "#8C6320",   # deep muted amber
-    "grid":           "#E2DDD6",   # very light grid lines
-    "nav_active":     "#3D6B5E",   # active nav text (accent)
-    "nav_hover":      "#E4E0D8",   # subtle hover background
+    "bg":             "#F5F3EF",
+    "sidebar_bg":     "#EDEAE3",
+    "card_bg":        "#FAFAF8",
+    "border":         "#D8D3C8",
+    "accent":         "#3D6B5E",
+    "text":           "#1E2822",
+    "text_secondary": "#4A5568",
+    "muted":          "#6E7A74",
+    "fraud":          "#A83232",
+    "safe":           "#3A7048",
+    "warning":        "#8C6320",
+    "grid":           "#E2DDD6",
+    "nav_active":     "#3D6B5E",
+    "nav_hover":      "#E4E0D8",   
 }
 
 
