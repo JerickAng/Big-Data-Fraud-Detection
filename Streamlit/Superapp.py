@@ -32,7 +32,7 @@ T = {
     "warning":        "#8C6320",
     "grid":           "#E2DDD6",
     "nav_active":     "#3D6B5E",
-    "nav_hover":      "#E4E0D8",   
+    "nav_hover":      "#E4E0D8",
 }
 
 
@@ -91,11 +91,6 @@ html, body, [class*="css"] {{
     color: {T['text']};
 }}
 
-/* ── Sidebar toggle ── */
-[data-testid="stSidebar"] .stToggle label {{
-    color: {T['text_secondary']} !important;
-    font-size: 0.85rem;
-}}
 
 /* ── Metric cards ── */
 [data-testid="metric-container"] {{
@@ -309,9 +304,6 @@ hr {{ border-color: {T['border']}; margin: 1rem 0; opacity: 1; }}
 }}
 
 /* ── Data source section in sidebar ── */
-[data-testid="stSidebar"] .stToggle {{
-    padding: 0 1.25rem;
-}}
 [data-testid="stSidebar"] .stFileUploader {{
     margin: 0 1.25rem;
 }}
@@ -407,7 +399,8 @@ def chart_caption(text: str):
 # ──────────────────────────────────────────────────────────────────────────────
 # Sidebar
 # ──────────────────────────────────────────────────────────────────────────────
-def render_sidebar() -> tuple:
+
+def render_sidebar(pg, pages_by_title):
     with st.sidebar:
         st.markdown(
             """
@@ -419,9 +412,8 @@ def render_sidebar() -> tuple:
         )
 
         st.markdown('<div class="sidebar-section">Navigation</div>', unsafe_allow_html=True)
-        pages = ["Dashboard", "Data Analysis", "Model Performance"]
-        for page_name in pages:
-            if st.session_state.current_page == page_name:
+        for page_name, page_obj in pages_by_title.items():
+            if pg == page_obj:
                 st.markdown(
                     f'<div class="nav-item-selected">{page_name}</div>',
                     unsafe_allow_html=True,
@@ -429,91 +421,14 @@ def render_sidebar() -> tuple:
             else:
                 with st.container():
                     if st.button(page_name, key=f"nav_{page_name}", use_container_width=True):
-                        st.session_state.current_page = page_name
-                        st.rerun()
-
-        st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown('<div class="sidebar-section">Data Source</div>', unsafe_allow_html=True)
-        use_demo = st.checkbox("Use demonstration data", value=True, key="demo_toggle")
-        t_file = i_file = None
-        if not use_demo:
-            t_file = st.file_uploader("Transaction CSV", type="csv", key="trans")
-            i_file = st.file_uploader("Identity CSV", type="csv", key="iden")
-
-    return use_demo, t_file, i_file
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Data loading
-# ──────────────────────────────────────────────────────────────────────────────
-@st.cache_data
-def load_uploaded_data(transaction_bytes, identity_bytes):
-    import io
-    transaction = pd.read_csv(io.BytesIO(transaction_bytes))
-    identity    = pd.read_csv(io.BytesIO(identity_bytes))
-    return transaction.merge(identity, on="TransactionID", how="left")
-
-
-@st.cache_data
-def generate_demo_data(n=5000, seed=42):
-    rng = np.random.default_rng(seed)
-    fraud_mask = rng.random(n) < 0.035
-    data = {
-        "TransactionID": np.arange(1, n + 1),
-        "isFraud":        fraud_mask.astype(int),
-        "TransactionAmt": np.where(fraud_mask, rng.exponential(800, n), rng.exponential(150, n)),
-        "card1":          rng.integers(1000, 18000, n),
-        "card2":          rng.choice([100, 111, 117, 121, 150, 200, 300, 360, 490, 555], n),
-        "addr1":          rng.integers(100, 500, n),
-        "addr2":          rng.integers(10, 100, n),
-        "dist1":          np.where(fraud_mask, rng.exponential(200, n), rng.exponential(50, n)),
-        "dist2":          rng.exponential(70, n),
-        "C1":             rng.integers(0, 15, n),
-        "C2":             rng.integers(0, 10, n),
-        "C13":            rng.integers(0, 40, n),
-        "V258":           rng.standard_normal(n) + np.where(fraud_mask, 1.2, 0),
-        "V294":           rng.standard_normal(n) + np.where(fraud_mask, 0.8, 0),
-        "V201":           rng.standard_normal(n),
-        "D1":             np.clip(rng.exponential(100, n), 0, 500),
-        "D4":             np.clip(rng.exponential(30,  n), 0, 300),
-        "ProductCD":      rng.choice(["W", "H", "C", "S", "R"], n),
-        "P_emaildomain":  rng.choice(["gmail.com", "yahoo.com", "hotmail.com", "anonymous.com", "outlook.com"], n),
-        "DeviceType":     rng.choice(["desktop", "mobile", None], n, p=[0.45, 0.40, 0.15]),
-    }
-    return pd.DataFrame(data)
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Bootstrap
-# ──────────────────────────────────────────────────────────────────────────────
-if "current_page" not in st.session_state:
-    st.session_state.current_page = "Dashboard"
-
-inject_custom_css()
-use_demo, t_file, i_file = render_sidebar()
-page = st.session_state.current_page
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Data
-# ──────────────────────────────────────────────────────────────────────────────
-df = None
-data_ready = False
-
-if use_demo:
-    df = generate_demo_data()
-    data_ready = True
-elif t_file and i_file:
-    with st.spinner("Merging datasets…"):
-        df = load_uploaded_data(t_file.read(), i_file.read())
-    data_ready = True
-else:
-    st.info("Upload both CSV files in the sidebar to get started, or enable demonstration mode.")
+                        st.switch_page(page_obj)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PAGE: DASHBOARD
 # ══════════════════════════════════════════════════════════════════════════════
-if page == "Dashboard":
+def render_dashboard():
+
 
     render_page_header("Dashboard")
 
@@ -522,9 +437,9 @@ if page == "Dashboard":
     with c1:
         render_kpi_card("Total Transactions", "590,540")
     with c2:
-        render_kpi_card("Fraud Cases", "20,663", delta="-5.2% vs prev period")
+        render_kpi_card("Fraud Cases", "20,663")
     with c3:
-        render_kpi_card("Non-Fraud Cases", "569,877", delta="+2.1%")
+        render_kpi_card("Non-Fraud Cases", "569,877")
     with c4:
         render_kpi_card("Fraud Rate", "3.50%")
 
@@ -537,7 +452,7 @@ if page == "Dashboard":
         list_items = [
             ("Dataset Scale", "590,540 transactions with 434 engineered features"),
             ("Imbalance Handling", "SMOTE applied to address 3.5% fraud minority"),
-            ("Model Portfolio", "Logistic Regression, Random Forest, Neural Network"),
+            ("Model Portfolio", "Logistic Regression, Random Forest"),
             ("Metrics", "Accuracy, Precision, Recall, F1-Score, AUC-ROC"),
             ("Business Goal", "Detect fraud while minimising false positives"),
         ]
@@ -586,7 +501,7 @@ if page == "Dashboard":
 
         # Risk summary
         summary_rows = [
-            ("Best Model", "Random Forest (AUC 0.81)"),
+            ("Best Model", "Random Forest (AUC 0.67)"),
             ("Recall", "43% of all fraud detected"),
             ("Precision", "12% of flagged are truly fraud"),
             ("SMOTE", "Balances class ratio for training"),
@@ -606,32 +521,34 @@ if page == "Dashboard":
 """, unsafe_allow_html=True)
 
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 # PAGE: DATA ANALYSIS
 # ══════════════════════════════════════════════════════════════════════════════
-elif page == "Data Analysis":
+def render_data_analysis():
 
     render_page_header("Data Analysis")
 
-    if not data_ready:
-        st.stop()
+    # Hardcoded from the real IEEE-CIS dataset
+    TOTAL       = 590_540
+    FRAUD_COUNT = 20_663
+    LEGIT_COUNT = 569_877
+    FRAUD_RATE  = 3.50
+    N_FEATURES  = 434
 
-    fraud_count = int(df["isFraud"].sum())
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        render_kpi_card("Dataset Rows",  f"{df.shape[0]:,}")
+        render_kpi_card("Dataset Rows",  f"{TOTAL:,}")
     with c2:
-        render_kpi_card("Features",      f"{df.shape[1]:,}")
+        render_kpi_card("Features",      f"{N_FEATURES:,}")
     with c3:
-        render_kpi_card("Fraud Cases",   f"{fraud_count:,}")
+        render_kpi_card("Fraud Cases",   f"{FRAUD_COUNT:,}")
     with c4:
-        render_kpi_card("Fraud Rate",    f"{fraud_count/len(df)*100:.2f}%")
+        render_kpi_card("Fraud Rate",    f"{FRAUD_RATE:.2f}%")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "Distribution", "Patterns", "Features", "Sample Data",
-    ])
+    tab1, tab2, tab3 = st.tabs(["Distribution", "Patterns", "Features"])
 
     # ── Tab 1: Distribution
     with tab1:
@@ -642,20 +559,21 @@ elif page == "Data Analysis":
                 "Class Balance",
                 "Bar comparison of legitimate vs fraudulent transaction counts.",
             )
-            fraud_counts = df["isFraud"].value_counts().sort_index()
             labels = ["Non-Fraud", "Fraud"]
+            counts = [LEGIT_COUNT, FRAUD_COUNT]
             colors = [T["safe"], T["fraud"]]
             fig, ax = plt.subplots(figsize=(5, 3.8))
-            bars = ax.bar(labels, fraud_counts.values, color=colors, width=0.45,
+            bars = ax.bar(labels, counts, color=colors, width=0.45,
                           edgecolor=T["card_bg"], linewidth=1.5)
-            for bar, val in zip(bars, fraud_counts.values):
+            for bar, val in zip(bars, counts):
                 ax.text(bar.get_x() + bar.get_width() / 2,
-                        bar.get_height() + max(fraud_counts) * 0.02,
-                        f"{val:,}\n({val/len(df)*100:.1f}%)",
+                        bar.get_height() + LEGIT_COUNT * 0.02,
+                        f"{val:,}\n({val/TOTAL*100:.1f}%)",
                         ha="center", va="bottom", color=T["muted"],
                         fontsize=8, fontfamily="monospace")
-            ax.set_ylabel("Count", fontsize=10)
-            ax.set_ylim(0, max(fraud_counts) * 1.18)
+            ax.set_ylabel("Number of Transactions", fontsize=10)
+            ax.set_xlabel("Transaction Class", fontsize=10)
+            ax.set_ylim(0, LEGIT_COUNT * 1.25)
             ax.set_title("Class Balance", fontsize=11)
             apply_chart_theme(ax, fig)
             st.pyplot(fig, use_container_width=True)
@@ -663,122 +581,121 @@ elif page == "Data Analysis":
 
         with col_b:
             render_chart_card(
-                "Transaction Amount Distribution",
-                "Overlapping density curves comparing amount ranges for fraud vs legitimate.",
+                "Class Balance Before vs After SMOTE",
+                "How SMOTE rebalances the training set to give the model equal exposure to fraud and non-fraud.",
             )
+            before_counts = [455497, 16935]   # Non-Fraud, Fraud before SMOTE
+            after_counts  = [455497, 455497]  # Balanced after SMOTE
+            x = np.arange(2)
+            width = 0.35
+            labels = ["Non-Fraud", "Fraud"]
             fig2, ax2 = plt.subplots(figsize=(5, 3.8))
-            fraud_amt = df[df["isFraud"] == 1]["TransactionAmt"].clip(upper=5000)
-            legit_amt = df[df["isFraud"] == 0]["TransactionAmt"].clip(upper=5000)
-            ax2.hist(legit_amt, bins=60, color=T["safe"],  alpha=0.6, label="Non-Fraud", density=True)
-            ax2.hist(fraud_amt, bins=60, color=T["fraud"], alpha=0.6, label="Fraud",     density=True)
-            ax2.set_xlabel("Transaction Amount (USD)")
-            ax2.set_ylabel("Density")
-            ax2.set_title("Amount Comparison")
-            ax2.legend(frameon=False, labelcolor=T["text_secondary"], fontsize=9)
+            b1 = ax2.bar(x - width/2, before_counts, width, label="Before SMOTE",
+                         color=T["warning"], edgecolor=T["card_bg"], linewidth=1)
+            b2 = ax2.bar(x + width/2, after_counts,  width, label="After SMOTE",
+                         color=T["accent"],  edgecolor=T["card_bg"], linewidth=1)
+            for bar in list(b1) + list(b2):
+                ax2.text(bar.get_x() + bar.get_width() / 2,
+                         bar.get_height() + 8000,
+                         f"{int(bar.get_height()):,}",
+                         ha="center", va="bottom", color=T["muted"],
+                         fontsize=7.5, fontfamily="monospace")
+            ax2.set_xticks(x)
+            ax2.set_xticklabels(labels)
+            ax2.set_ylabel("Number of Transactions", fontsize=10)
+            ax2.set_xlabel("Transaction Class", fontsize=10)
+            ax2.set_ylim(0, 455497 * 1.35)
+            ax2.set_title("SMOTE Rebalancing")
+            ax2.legend(frameon=False, labelcolor=T["text_secondary"], fontsize=9,
+                       loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=2)
             apply_chart_theme(ax2, fig2)
+            fig2.tight_layout()
             st.pyplot(fig2, use_container_width=True)
-            chart_caption("Fraudulent transactions show bimodal behaviour — micro-amounts and high-value spikes.")
+            chart_caption("SMOTE generates synthetic fraud samples so the model learns from equal numbers of both classes.")
 
     # ── Tab 2: Patterns
     with tab2:
         render_chart_card(
-            "Top Features by Fraud Correlation",
-            "Absolute Pearson correlation with the isFraud label (numeric columns only, top 10 shown).",
+            "Random Forest Feature Importance",
+            "Top 10 features ranked by how much they contributed to the Random Forest model's fraud detection decisions.",
         )
-        num_cols = df.select_dtypes(include=np.number).columns.tolist()[:50]
-        corr_series = (
-            df[num_cols].corr()["isFraud"]
-            .abs()
-            .drop("isFraud", errors="ignore")
-            .sort_values(ascending=False)
-            .head(10)
-        )
-        palette = [
-            T["accent"]  if v >= corr_series.iloc[0] * 0.7 else
-            T["warning"] if v >= corr_series.iloc[0] * 0.4 else
-            T["muted"]
-            for v in corr_series.values
-        ]
-        fig3, ax3 = plt.subplots(figsize=(10, 4.5))
-        bars3 = ax3.barh(corr_series.index[::-1], corr_series.values[::-1],
-                         color=palette[::-1], edgecolor=T["card_bg"], linewidth=0.8)
-        ax3.set_xlabel("Absolute Correlation")
-        ax3.set_title("Top 10 Features Associated with Fraud")
-        for bar, val in zip(bars3, corr_series.values[::-1]):
+        feature_importance = {
+            "V79":  0.041,
+            "V40":  0.058,
+            "V45":  0.060,
+            "V87":  0.061,
+            "V38":  0.068,
+            "V51":  0.073,
+            "V52":  0.098,
+            "V74":  0.103,
+            "V33":  0.104,
+            "V94":  0.112,
+        }
+        fi_series = pd.Series(feature_importance)
+        fig3, ax3 = plt.subplots(figsize=(10, 5))
+        bars3 = ax3.barh(fi_series.index, fi_series.values,
+                         color=T["accent"], edgecolor=T["card_bg"], linewidth=0.8)
+        ax3.set_xlabel("Feature Importance Score")
+        ax3.set_ylabel("Feature Names")
+        ax3.set_title("Figure 3.4: Random Forest Feature Importance")
+        for bar, val in zip(bars3, fi_series.values):
             ax3.text(val + 0.001, bar.get_y() + bar.get_height() / 2,
                      f"{val:.3f}", va="center", color=T["muted"],
                      fontsize=8, fontfamily="monospace")
         apply_chart_theme(ax3, fig3)
         st.pyplot(fig3, use_container_width=True)
-        chart_caption("Teal = high correlation, amber = moderate, grey = lower.")
+        chart_caption("Feature importance measures how much each feature contributed to correct splits across all 100 decision trees.")
 
     # ── Tab 3: Features
     with tab3:
         st.markdown(f"""
 <div class="fl-card">
-    <div class="fl-card-title">Feature Overview</div>
-    <div class="fl-card-desc">Data type, missing percentage, and unique value count for every column.</div>
+    <div class="fl-card-title">Top 10 Features by Importance</div>
+    <div class="fl-card-desc">Ranked by Random Forest feature importance score. These are Vesta-engineered anonymised features from the IEEE-CIS dataset.</div>
 </div>
 """, unsafe_allow_html=True)
         feature_info = pd.DataFrame({
-            "Column":        df.columns,
-            "Data Type":     df.dtypes.values,
-            "Missing %":     (df.isnull().sum() / len(df) * 100).round(2).values,
-            "Unique Values": [df[col].nunique() for col in df.columns],
+            "Rank":               list(range(1, 11)),
+            "Feature":            list(reversed(list(feature_importance.keys()))),
+            "Importance Score":   [round(v, 3) for v in reversed(list(feature_importance.values()))],
+            "Type":               ["Vesta Engineered (V-feature)"] * 10,
         })
         st.dataframe(feature_info, use_container_width=True, hide_index=True)
-        chart_caption("Columns above 50% missing may need to be dropped during preprocessing.")
+        chart_caption("V-features are anonymised by Vesta — their exact meaning is proprietary, but their predictive power is real.")
 
-    # ── Tab 4: Sample Data
-    with tab4:
-        st.markdown(f"""
-<div class="fl-card">
-    <div class="fl-card-title">Raw Data Sample</div>
-    <div class="fl-card-desc">Fraud rows highlighted in red; legitimate rows in green.</div>
-</div>
-""", unsafe_allow_html=True)
-        n_show = st.slider("Rows to display", 5, 50, 10)
-        sample = df.head(n_show).copy()
 
-        def highlight_fraud(val):
-            if val == 1:   return "background-color:#f5e0e0; color:#7A2020"
-            elif val == 0: return "background-color:#e0f0e4; color:#1F5230"
-            return ""
-
-        st.dataframe(
-            sample.style.applymap(highlight_fraud, subset=["isFraud"]),
-            use_container_width=True,
-        )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PAGE: MODEL PERFORMANCE
 # ══════════════════════════════════════════════════════════════════════════════
-elif page == "Model Performance":
+def render_model_performance():
 
     render_page_header("Model Performance")
 
     perf = pd.DataFrame({
-        "Model":              ["Logistic Regression", "Random Forest", "Neural Network"],
-        "Accuracy":           [0.83, 0.87, 0.87],
-        "Precision (Fraud)":  [0.09, 0.12, 0.12],
-        "Recall (Fraud)":     [0.44, 0.43, 0.44],
-        "F1-Score (Fraud)":   [0.16, 0.19, 0.19],
-        "AUC-ROC":            [0.72, 0.81, 0.80],
+        "Model":              ["Logistic Regression", "Random Forest", "Random Forest (Threshold 0.3)"],
+        "Accuracy":           [0.83, 0.87, 0.08],
+        "Precision (Fraud)":  [0.09, 0.12, 0.04],
+        "Recall (Fraud)":     [0.44, 0.43, 0.97],
+        "F1-Score (Fraud)":   [0.16, 0.19, 0.07],
+        "AUC-ROC":            [0.6748, 0.6741, np.nan],
     })
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
         render_model_best_card("Best Accuracy", "Random Forest — 87%")
     with c2:
-        render_model_best_card("Best AUC-ROC", "Random Forest — 0.81")
+        render_model_best_card("Best AUC-ROC", "Logistic Regression — 0.67")
     with c3:
-        render_model_best_card("Best F1-Score", "RF & NN — 19%")
+        render_model_best_card("Best F1-Score", "Random Forest — 19%")
+    with c4:
+        render_model_best_card("Best Recall", "RF @ Threshold 0.3 — 97%")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    tab_summary, tab_charts, tab_confusion, tab_insights = st.tabs([
-        "Metrics Summary", "Performance Charts", "Confusion Matrices", "Key Insights",
+    tab_summary, tab_charts, tab_confusion = st.tabs([
+        "Metrics Summary", "Performance Charts", "Confusion Matrices",
     ])
 
     # ── Tab 1: Metrics Summary
@@ -786,52 +703,44 @@ elif page == "Model Performance":
         st.markdown(f"""
 <div class="fl-card">
     <div class="fl-card-title">Model Comparison Table</div>
-    <div class="fl-card-desc">Evaluated on held-out test set with SMOTE-balanced training. Best values per column are highlighted.</div>
+    <div class="fl-card-desc">Evaluated on held-out test set with SMOTE-balanced training. Includes a Random Forest variant with its decision threshold lowered to 0.3 to trade precision for recall. Best values per column are highlighted; AUC-ROC is threshold-independent, so it's N/A for the tuned variant.</div>
 </div>
 """, unsafe_allow_html=True)
 
         def color_best(col):
             styles = [""] * len(col)
-            best_idx = col.idxmax()
+            best_idx = col.idxmax(skipna=True)
             styles[best_idx] = f"color:{T['accent']}; font-weight:700; background:#E8F2F0"
             return styles
+
+        def fmt_auc(v):
+            return "N/A" if pd.isna(v) else f"{v:.2%}"
 
         styled = (
             perf.style
             .apply(color_best, subset=["Accuracy","Precision (Fraud)","Recall (Fraud)","F1-Score (Fraud)","AUC-ROC"])
-            .format({c: "{:.2%}" for c in ["Accuracy","Precision (Fraud)","Recall (Fraud)","F1-Score (Fraud)","AUC-ROC"]})
+            .format({c: "{:.2%}" for c in ["Accuracy","Precision (Fraud)","Recall (Fraud)","F1-Score (Fraud)"]})
+            .format({"AUC-ROC": fmt_auc})
         )
         st.dataframe(styled, use_container_width=True, hide_index=True)
         chart_caption("Highlighted cells indicate the best-performing model for each metric.")
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown(f"<p style='color:{T['muted']};font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;font-family:Roboto Mono,monospace;margin-bottom:0.5rem;'>Metric Definitions</p>", unsafe_allow_html=True)
+       
 
-        metrics_info = {
-            "Accuracy":  "Overall correctness: (TP + TN) / Total",
-            "Precision": "Of all flagged transactions, how many were truly fraudulent: TP / (TP + FP)",
-            "Recall":    "Of all actual fraud cases, fraction successfully caught: TP / (TP + FN)",
-            "F1-Score":  "Harmonic mean of Precision and Recall",
-            "AUC-ROC":   "Area under the ROC curve — discrimination ability across all thresholds",
-        }
-        for metric, definition in metrics_info.items():
-            st.markdown(
-                f"<p style='font-size:0.84rem;color:{T['text_secondary']};margin-bottom:0.3rem;'>"
-                f"<b style='color:{T['text']};'>{metric}</b>: {definition}</p>",
-                unsafe_allow_html=True,
-            )
 
     # ── Tab 2: Performance Charts
     with tab_charts:
         st.markdown(f"""
 <div class="fl-card">
     <div class="fl-card-title">Per-Metric Bar Charts</div>
-    <div class="fl-card-desc">Side-by-side comparison of all three models across every evaluation metric.</div>
+    <div class="fl-card-desc">Comparison of both models across every evaluation metric, including a threshold-tuned Random Forest variant (threshold 0.3).</div>
 </div>
 """, unsafe_allow_html=True)
 
         metrics_to_plot = ["Accuracy","Precision (Fraud)","Recall (Fraud)","F1-Score (Fraud)","AUC-ROC"]
         bar_colors = [T["accent"], T["warning"], T["safe"]]
+        bar_labels = ["LR", "RF", "RF@0.3"]
 
         row1_cols = st.columns(3, gap="medium")
         row2_cols = st.columns(2, gap="medium")
@@ -840,13 +749,15 @@ elif page == "Model Performance":
         for col_ui, metric in zip(all_cols, metrics_to_plot):
             with col_ui:
                 fig, ax = plt.subplots(figsize=(3.2, 3))
-                bars = ax.bar(["LR", "RF", "NN"], perf[metric],
-                              color=bar_colors, edgecolor=T["card_bg"], linewidth=1, width=0.5)
-                ax.set_ylim(0, min(perf[metric].max() * 1.4, 1.0))
+                values = perf[metric].fillna(0)
+                bars = ax.bar(bar_labels, values,
+                              color=bar_colors, edgecolor=T["card_bg"], linewidth=1, width=0.55)
+                ax.set_ylim(0, min(values.max() * 1.4, 1.0))
                 ax.set_title(metric.replace(" (Fraud)", ""), fontsize=10)
-                for b, v in zip(bars, perf[metric]):
+                for b, v, raw in zip(bars, values, perf[metric]):
+                    label = "N/A" if pd.isna(raw) else f"{v:.0%}"
                     ax.text(b.get_x() + b.get_width() / 2, b.get_height() + 0.01,
-                            f"{v:.0%}", ha="center", va="bottom",
+                            label, ha="center", va="bottom",
                             color=T["muted"], fontsize=8, fontfamily="monospace")
                 ax.set_ylabel("Score", fontsize=9)
                 apply_chart_theme(ax, fig)
@@ -859,26 +770,26 @@ elif page == "Model Performance":
         with cs1:
             render_info_card("Random Forest", [
                 "Highest accuracy (87%)",
-                "Best AUC-ROC (0.81)",
                 "Best precision and F1-score",
+                "Comparable AUC-ROC to LR (0.67)",
                 "Robust to outliers",
                 "Recommended for deployment",
             ])
         with cs2:
             render_info_card("Logistic Regression", [
                 "Highest recall (44%)",
+                "Best AUC-ROC (0.67)",
                 "Fully interpretable coefficients",
                 "Fastest inference time",
                 "Lowest memory footprint",
-                "Best baseline model",
             ])
         with cs3:
-            render_info_card("Neural Network", [
-                "Matches RF on accuracy (87%)",
-                "Strong AUC-ROC (0.80)",
-                "Handles complex feature interactions",
-                "Requires more compute",
-                "Good recall performance",
+            render_info_card("RF @ Threshold 0.3", [
+                "Catches 97% of fraud (recall)",
+                "Precision drops to 4%",
+                "Accuracy falls to 8%",
+                "Flags most transactions as fraud",
+                "Useful only if missed fraud is far costlier than false alarms",
             ])
 
     # ── Tab 3: Confusion Matrices
@@ -886,24 +797,20 @@ elif page == "Model Performance":
         st.markdown(f"""
 <div class="fl-card">
     <div class="fl-card-title">Confusion Matrices</div>
-    <div class="fl-card-desc">Estimated on a 10,000-sample test set with 3.5% fraud rate, derived from reported Precision/Recall metrics.</div>
+    <div class="fl-card-desc">Evaluated on a 118,108-sample held-out test set (20% of full dataset). Values taken directly from notebook output (Figure 3.2).</div>
 </div>
 """, unsafe_allow_html=True)
 
-        n_test  = 10_000
-        n_fraud = int(n_test * 0.035)
-        n_legit = n_test - n_fraud
 
-        model_cms = []
-        for _, row in perf.iterrows():
-            tp = int(row["Recall (Fraud)"] * n_fraud)
-            fn = n_fraud - tp
-            fp = int(tp / row["Precision (Fraud)"]) - tp if row["Precision (Fraud)"] > 0 else 0
-            tn = n_legit - fp
-            model_cms.append(np.array([[tn, fp], [fn, tp]]))
+        model_cms = [
+            np.array([[96375, 17600], [2301, 1832]]),   # Logistic Regression
+            np.array([[100487, 12513], [2375, 1758]]),  # Random Forest
+        ]
+        base_model_names = ["Logistic Regression", "Random Forest"]
+        max_val = 100487  # for colour scale
 
-        cm_cols = st.columns(3, gap="large")
-        for col_ui, cm, name in zip(cm_cols, model_cms, perf["Model"]):
+        cm_cols = st.columns(2, gap="large")
+        for col_ui, cm, name in zip(cm_cols, model_cms, base_model_names):
             with col_ui:
                 st.markdown(f"""
 <div class="fl-card" style="text-align:center;padding-bottom:0.5rem;">
@@ -912,7 +819,7 @@ elif page == "Model Performance":
                 fig, ax = plt.subplots(figsize=(3.5, 3))
                 fig.patch.set_facecolor(T["card_bg"])
                 ax.set_facecolor(T["card_bg"])
-                ax.imshow(cm, cmap="Oranges", vmin=0, vmax=n_legit)
+                ax.imshow(cm, cmap="Oranges", vmin=0, vmax=max_val)
                 for i in range(2):
                     for j in range(2):
                         ax.text(j, i, f"{cm[i,j]:,}", ha="center", va="center",
@@ -928,58 +835,25 @@ elif page == "Model Performance":
                 st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown(f"<p style='color:{T['muted']};font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;font-family:Roboto Mono,monospace;margin-bottom:0.5rem;'>Matrix Interpretation</p>", unsafe_allow_html=True)
-
-        interp = [
-            ("TN — True Negatives",  "Legitimate transactions correctly identified as safe (top-left)."),
-            ("FP — False Positives", "Legitimate transactions incorrectly flagged as fraud (top-right). Increases customer friction."),
-            ("FN — False Negatives", "Missed fraud cases — the most costly error in financial contexts (bottom-left)."),
-            ("TP — True Positives",  "Correctly identified fraudulent transactions (bottom-right). Maximise this."),
-        ]
-        for label, desc in interp:
-            st.markdown(
-                f"<p style='font-size:0.84rem;color:{T['text_secondary']};margin-bottom:0.3rem;'>"
-                f"<b style='color:{T['text']};'>{label}</b>: {desc}</p>",
-                unsafe_allow_html=True,
-            )
-
-    # ── Tab 4: Key Insights
-    with tab_insights:
-        st.markdown(f"""
-<div class="fl-card">
-    <div class="fl-card-title">Key Findings and Recommendations</div>
-    <div class="fl-card-desc">Actionable insights derived from the model evaluation for production deployment.</div>
-</div>
-""", unsafe_allow_html=True)
-
-        i1, i2, i3 = st.columns(3, gap="medium")
-        with i1:
-            render_insight_card(
-                "Best Overall Model",
-                "Random Forest and Neural Network tie at <b>87% accuracy</b>. "
-                "Random Forest is recommended for deployment due to superior AUC-ROC (0.81) and interpretability.",
-            )
-        with i2:
-            render_insight_card(
-                "Precision-Recall Tradeoff",
-                "At 12% precision, expect <b>approximately 8 false positives per true fraud caught</b>. "
-                "High false alarm rates degrade customer experience and create operational burden.",
-            )
-        with i3:
-            render_insight_card(
-                "Threshold Optimisation",
-                "Lowering the decision threshold from 0.5 to 0.3 raises recall to approximately <b>60%</b>. "
-                "Tune this value based on business cost-benefit analysis.",
-            )
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        render_info_card(
-            "Deployment Strategy",
-            [
-                "<b>Primary Model</b>: Deploy Random Forest for production fraud detection",
-                "<b>Threshold Tuning</b>: Adjust based on false-positive tolerance and fraud-loss budget",
-                "<b>Ensemble Approach</b>: Combine multiple model predictions for high-value flagging decisions",
-                "<b>Continuous Retraining</b>: Monthly retraining schedule to adapt to evolving fraud patterns",
-                "<b>Feature Engineering</b>: Collect additional temporal and behavioural features to enrich inputs",
-            ]
+        st.markdown(
+            f"<p style='font-size:0.8rem;color:{T['muted']};font-style:italic;'>"
+            f"Note: the notebook only reports aggregate metrics (accuracy, precision, recall, F1) for the "
+            f"threshold-tuned Random Forest (threshold 0.3) — no confusion matrix was computed for it, so it's "
+            f"not shown here.</p>",
+            unsafe_allow_html=True,
         )
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+
+
+inject_custom_css()
+
+pages_by_title = {
+    "Dashboard":         st.Page(render_dashboard,         title="Dashboard",         default=True),
+    "Data Analysis":      st.Page(render_data_analysis,      title="Data Analysis"),
+    "Model Performance":  st.Page(render_model_performance,  title="Model Performance"),
+}
+
+pg = st.navigation(list(pages_by_title.values()), position="hidden")
+render_sidebar(pg, pages_by_title)
+pg.run()
