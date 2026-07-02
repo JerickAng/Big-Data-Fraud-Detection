@@ -584,8 +584,8 @@ def render_data_analysis():
                 "Class Balance Before vs After SMOTE",
                 "How SMOTE rebalances the training set to give the model equal exposure to fraud and non-fraud.",
             )
-            before_counts = [455497, 16935]   # Non-Fraud, Fraud before SMOTE
-            after_counts  = [455497, 455497]  # Balanced after SMOTE
+            before_counts = [455902, 16530]   # Non-Fraud, Fraud before SMOTE
+            after_counts  = [455902, 455902]  # Balanced after SMOTE
             x = np.arange(2)
             width = 0.35
             labels = ["Non-Fraud", "Fraud"]
@@ -604,7 +604,7 @@ def render_data_analysis():
             ax2.set_xticklabels(labels)
             ax2.set_ylabel("Number of Transactions", fontsize=10)
             ax2.set_xlabel("Transaction Class", fontsize=10)
-            ax2.set_ylim(0, 455497 * 1.35)
+            ax2.set_ylim(0, 455902 * 1.35)
             ax2.set_title("SMOTE Rebalancing")
             ax2.legend(frameon=False, labelcolor=T["text_secondary"], fontsize=9,
                        loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=2)
